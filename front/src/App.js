@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import "./App.css";
 import ChartLine from "./components/ChartLine";
 import Grid from "@mui/material/Grid";
@@ -14,6 +14,11 @@ function App() {
   const [timeData, setTimeData] = useState([]);
   const [apiNewData, setApiNewData] = useState([]);
   const [delay, setDelay] = useState("");
+  const cityRef = useRef(city);
+
+  useEffect(() => {
+    cityRef.current = city;
+  }, [city]);
 
   useEffect(() => {
     fetch("https://restcountries.com/v3.1/all")
@@ -47,7 +52,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    clearChart()
+    clearChart();
     if (city) {
       fetch(`http://localhost:8080/weather/${city}`)
         .then((response) => response.json())
@@ -60,6 +65,7 @@ function App() {
           fetch(`http://localhost:8080/weather/${city}`)
             .then((response) => response.json())
             .then((data) => {
+              console.log(data);
               setApiNewData(data);
             });
         }, delay);
@@ -70,20 +76,30 @@ function App() {
   }, [city, delay]);
 
   useEffect(() => {
-    setWeatherData({
-      name: city,
-      temperature: [
-        ...weatherData.temperature,
+    setWeatherData((prevWeatherData) => {
+      const newTemperature = [
+        ...prevWeatherData.temperature,
         parseInt(apiNewData.temperature),
-      ],
+      ].slice(-20); // Raccourcit le tableau à un maximum de 20 éléments
+
+      return {
+        ...prevWeatherData,
+        name: cityRef.current,
+        temperature: newTemperature,
+      };
     });
-    setTimeData([...timeData, apiNewData.date]);
-  }, [apiNewData]);
+
+    setTimeData((prevTimeData) => {
+      const newTimeData = [...prevTimeData, apiNewData.date].slice(-20); // Raccourcit le tableau à un maximum de 20 éléments
+
+      return newTimeData;
+    });
+  }, [apiNewData, setWeatherData, setTimeData]);
 
   const clearChart = () => {
-    setTimeData([])
-    setWeatherData({city: '', temperature: []})
-  }
+    setTimeData([]);
+    setWeatherData({ city: "", temperature: [] });
+  };
 
   const handleChangeCurrentCity = (event) => {
     setCity(event.target.value);
